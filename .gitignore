@@ -1,0 +1,71 @@
+# ============================================================
+# .gitignore - Projet ETL Anime & Manga Intelligence
+# ============================================================
+
+# --- Environment variables (NEVER commit) ---
+.env
+.env.local
+.env.*.local
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg
+*.egg-info/
+dist/
+build/
+
+# --- Virtual environments ---
+.venv/
+venv/
+env/
+ENV/
+
+# --- Tests & Coverage ---
+.pytest_cache/
+.coverage
+htmlcov/
+coverage.xml
+
+# --- Linting & Type checking ---
+.mypy_cache/
+.flake8
+
+# --- Data (keep raw CSV, ignore processed) ---
+data/
+
+# --- Databases ---
+*.db
+*.sqlite
+*.sqlite3
+
+# --- Logs ---
+*.log
+logs/
+
+# --- Great Expectations (generated artifacts) ---
+great_expectations/uncommitted/
+
+# --- Docker ---
+.docker/
+
+# --- OS ---
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+Desktop.ini
+
+# --- IDEs ---
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# --- Jupyter (if used for exploration) ---
+.ipynb_checkpoints/
+*.ipynb

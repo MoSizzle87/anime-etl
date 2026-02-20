@@ -1,72 +1,47 @@
 # ============================================================
-# .gitignore - Projet ETL Anime & Manga Intelligence
+# .dockerignore - Exclude from Docker build context
 # ============================================================
 
-# --- Variables d'environnement (JAMAIS commiter) ---
-.env
-.env.local
-.env.*.local
+# --- Git ---
+.git/
+.gitignore
+.gitattributes
 
-# --- Python ---
+# --- Python cache ---
 __pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-*.egg
-*.egg-info/
-dist/
-build/
-
-# --- Virtual environments ---
+*.pyc
+*.pyo
 .venv/
 venv/
-env/
-ENV/
+*.egg-info/
 
-# --- Tests & Coverage ---
+# --- Data (too large for Docker image) ---
+data/
+
+# --- Tests ---
+tests/
 .pytest_cache/
 .coverage
 htmlcov/
-coverage.xml
 
-# --- Linting & Type checking ---
-.mypy_cache/
-.flake8
+# --- Documentation ---
+README.md
+docs/
+*.md
 
-# --- Data (raw data = trop lourde, processed = générée) ---
-data/raw/
-data/processed/
-
-# --- Bases de données locales ---
-*.db
-*.sqlite
-*.sqlite3
-
-# --- Logs ---
-*.log
-logs/
-
-# --- Great Expectations (artefacts générés) ---
-great_expectations/uncommitted/
-
-# --- Docker ---
-.docker/
-
-# --- OS ---
-.DS_Store
-.DS_Store?
-._*
-Thumbs.db
-Desktop.ini
-
-# --- IDEs ---
-.idea/
+# --- IDE ---
 .vscode/
+.idea/
 *.swp
 *.swo
-*~
 
-# --- Jupyter (si utilisé pour exploration) ---
-.ipynb_checkpoints/
-*.ipynb
+# --- Environment files ---
+.env
+.env.*
+
+# --- CI/CD ---
+.github/
+
+# --- Other ---
+*.log
+.DS_Store
