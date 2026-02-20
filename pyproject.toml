@@ -16,27 +16,27 @@ dependencies = [
     "requests==2.32.4",
 
     # PostgreSQL driver
-    "psycopg2-binary==2.9.10",
+    "psycopg2-binary==2.9.11",
 
-    # ORM + connexion PostgreSQL clean
+    # ORM and clean PostgreSQL connections
     "sqlalchemy==2.0.41",
 
-    # Variables d'environnement
+    # Environment variables
     "python-dotenv==1.1.1",
 
-    # Fuzzy matching pour déduplication des titres anime
+    # Fuzzy matching for anime title deduplication
     "rapidfuzz==3.13.0",
 
-    # GraphQL client pour AniList API
+    # GraphQL client for AniList API
     "graphql-core==3.2.6",
 
     # Data quality checks (Great Expectations)
-    "great-expectations==1.4.5",
+    "great-expectations==1.10.0",
 
-    # Handling retry for api calls
-    "tenacity==9.1.0",
+    # Retry logic for API calls
+    "tenacity==9.1.2",
 
-    # Handling API ratelimit
+    # API rate limiting
     "ratelimit==2.2.1",
 ]
 
@@ -44,16 +44,19 @@ dependencies = [
 dev = [
     # Tests
     "pytest==8.4.2",
-    "pytest-cov==6.2.1",
+    "pytest-cov==6.3.0",
 
     # Linting & type checking
     "flake8==7.2.0",
-    "mypy==1.16.0",
+    "mypy==1.18.2",
 
-    # Types stubs pour mypy
+    # Type stubs for mypy
     "types-requests==2.32.4.20250611",
-    "pandas-stubs==2.3.0.250703",
+    "pandas-stubs==2.3.2.250926",
 ]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
