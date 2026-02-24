@@ -11,7 +11,7 @@ from ratelimit import limits, sleep_and_retry
 from tenacity import retry, retry_if_exception, stop_after_attempt, wait_exponential
 
 
-# --- FUNCTION 1: Kaggle CSV ---
+# --- TASK 1: Kaggle CSV ---
 def extract_kaggle_csv(file_path: str) -> pd.DataFrame:
     """
     Extract anime data from Kaggle CSV file.
@@ -52,7 +52,7 @@ def extract_kaggle_csv(file_path: str) -> pd.DataFrame:
     return df
 
 
-# --- FUNCTION 2: Jikan REST API ---
+# --- TASK 2: Jikan REST API ---
 def should_retry_http_error(exception) -> bool:
     """
     Determine if HTTP error should be retried.
@@ -126,7 +126,7 @@ def extract_jikan_api(anime_ids: List[int], base_url: str) -> List[Dict[str, Any
     return results
 
 
-# --- FUNCTION 3: AniList GraphQL ---
+# --- TASK 3: AniList GraphQL ---
 def extract_anilist_graphql(
     query: str, variables: Dict[str, Any], api_url: str
 ) -> Dict[str, Any]:
