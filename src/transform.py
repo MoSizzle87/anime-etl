@@ -100,7 +100,6 @@ def fuzzy_match_titles(
         - Titles are normalized before comparison (lowercase, no accents, no punctuation)
         - Uses RapidFuzz fuzz.ratio() for similarity scoring
         - Returns ALL matches >= threshold, not just best match
-        - Time complexity: O(n × m) where n=len(df1), m=len(df2)
     """
     matches = []
 
@@ -175,39 +174,150 @@ def deduplicate_animes(
 # --- TASK 3: Convert Jikan & AniList data to df ---
 def convert_jikan_to_dataframe(jikan_data: List[Dict[str, Any]]) -> pd.DataFrame:
     """
-    Convert Jikan API list of dicts to DataFrame.
+    Convert Jikan API response to DataFrame.
+
+    Transforms list of anime dicts from Jikan API into a clean DataFrame.
+    Nested fields (studios, genres) are flattened into comma-separated strings.
 
     Args:
         jikan_data: List of anime dicts from extract_jikan_api()
 
     Returns:
-        DataFrame with normalized columns
+        DataFrame with columns: mal_id, title, synopsis, score, scored_by, studios, genres
+        Empty DataFrame if input is empty
+
+    Notes:
+        - Studios list is converted to comma-separated string of studio names
+        - Genres list is converted to comma-separated string of genre names
+        - Only essential columns are kept in the output DataFrame
     """
+    # Return empty DataFrame if no data
     if not jikan_data:
         return pd.DataFrame()
 
-    # Convert to DataFrame
+    # Convert list of dicts to DataFrame
     df = pd.DataFrame(jikan_data)
 
-    # Select/rename relevant columns
-    # Jikan structure: {'mal_id': 1, 'title': '...', 'synopsis': '...', 'studios': [...]}
-    return df
+    # Flatten studios: [{"name": "Sunrise"}] → "Sunrise"
+    df["studios"] = df["studios"].apply(
+        lambda studios_list: (
+            ", ".join([s["name"] for s in studios_list]) if studios_list else ""
+        )
+    )
+
+    # Flatten genres: [{"name": "Action"}, {"name": "Sci-Fi"}] → "Action, Sci-Fi"
+    df["genres"] = df["genres"].apply(
+        lambda genres_list: (
+            ", ".join([g["name"] for g in genres_list]) if genres_list else ""
+        )
+    )
+
+    # Select and return essential columns only
+    columns_to_keep = [
+        "mal_id",
+        "title",
+        "synopsis",
+        "score",
+        "scored_by",
+        "studios",
+        "genres",
+    ]
+    return df[columns_to_keep]
 
 
 def convert_anilist_to_dataframe(anilist_data: Dict[str, Any]) -> pd.DataFrame:
     """
     Convert AniList GraphQL response to DataFrame.
 
+    Extracts anime data from nested AniList GraphQL response structure
+    and flattens the title field into separate romaji/english columns.
+
     Args:
-        anilist_data: Response from extract_anilist_graphql()
+        anilist_data: Response dict from extract_anilist_graphql()
+                      Expected structure: {'data': {'Page': {'media': [...]}}}
 
     Returns:
-        DataFrame with normalized columns
+        DataFrame with columns: id, idMal, title_romaji, title_english, averageScore, trending
+        Empty DataFrame if no media found in response
+
+    Notes:
+        - AniList uses nested 'title' object with romaji/english fields
+        - idMal links to MyAnimeList ID for cross-referencing
+        - averageScore is AniList's community score (0-100)
     """
+    # Extract media list from nested structure
     # AniList structure: {'data': {'Page': {'media': [...]}}}
     media_list = anilist_data.get("data", {}).get("Page", {}).get("media", [])
 
+    # Return empty DataFrame if no data
     if not media_list:
         return pd.DataFrame()
 
-    return pd.DataFrame(media_list)
+    # Convert list of anime dicts to DataFrame
+    df = pd.DataFrame(media_list)
+
+    # Flatten title object: {"romaji": "...", "english": "..."} → separate columns
+    df["title_romaji"] = df["title"].apply(lambda t: t.get("romaji", "") if t else "")
+    df["title_english"] = df["title"].apply(lambda t: t.get("english", "") if t else "")
+
+    # Select and return essential columns only
+    columns_to_keep = [
+        "id",
+        "idMal",
+        "title_romaji",
+        "title_english",
+        "averageScore",
+        "trending",
+    ]
+    return df[columns_to_keep]
+
+
+def calculate_aggregated_scores(
+    df_kaggle: pd.DataFrame, df_jikan: pd.DataFrame, df_anilist: pd.DataFrame
+) -> pd.DataFrame:
+    """
+    Calculate aggregated scores from multiple sources.
+
+    Merges scores from Kaggle, Jikan, and AniList into a unified score table.
+    AniList scores are normalized from 0-100 to 0-10 scale.
+
+    Args:
+        df_kaggle: Kaggle data with 'anime_id' and 'rating'
+        df_jikan: Jikan data with 'mal_id' and 'score'
+        df_anilist: AniList data with 'idMal' and 'averageScore'
+
+    Returns:
+        DataFrame with columns: anime_id, mal_score, anilist_score, avg_score
+
+    Notes:
+        - mal_score prioritizes Jikan over Kaggle (more accurate)
+        - anilist_score is normalized to 0-10 scale (divided by 10)
+        - avg_score is mean of available scores (ignores NaN)
+    """
+    # Rename mal_id → anime_id in Jikan data
+    df_jikan_renamed = df_jikan.rename(columns={"mal_id": "anime_id"})
+
+    # Left join to keep all Kaggle animes
+    df_merged = df_kaggle[["anime_id", "rating"]].merge(
+        df_jikan_renamed[["anime_id", "score"]], on="anime_id", how="left"
+    )
+
+    # Rename idMal → anime_id in AniList data
+    df_anilist_renamed = df_anilist.rename(columns={"idMal": "anime_id"})
+
+    # Left join with AniList data
+    df_merged = df_merged.merge(
+        df_anilist_renamed[["anime_id", "averageScore"]], on="anime_id", how="left"
+    )
+
+    # mal_score: Jikan preferred, fallback to Kaggle
+    df_merged["mal_score"] = df_merged["score"].fillna(df_merged["rating"])
+
+    # anilist_score: Normalize 0-100 → 0-10 scale
+    df_merged["anilist_score"] = df_merged["averageScore"] / 10
+
+    # avg_score: Mean of both scores (ignores NaN)
+    df_merged["avg_score"] = df_merged[["mal_score", "anilist_score"]].mean(axis=1)
+
+    # Return only essential columns
+    return df_merged[["anime_id", "mal_score", "anilist_score", "avg_score"]]
