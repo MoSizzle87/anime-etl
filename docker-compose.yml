@@ -23,7 +23,7 @@ services:
       postgres:
         condition: service_healthy
     env_file:
-      - .env
+      - .env.docker
     volumes:
       - ./data:/app/data
 
