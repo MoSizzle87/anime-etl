@@ -8,7 +8,7 @@ import unicodedata
 from typing import Any, Dict, List
 
 import pandas as pd
-from rapidfuzz import fuzz
+from rapidfuzz import fuzz, process
 
 
 # --- TASK 1: Normalize titles ---
@@ -134,6 +134,8 @@ def deduplicate_animes(
     """
     Remove duplicate animes based on fuzzy title matching.
 
+    Optimized version using RapidFuzz process for better performance.
+
     Args:
         df: DataFrame with anime data
         title_col: Column name containing titles
@@ -142,32 +144,43 @@ def deduplicate_animes(
     Returns:
         DataFrame with duplicates removed (keeps first occurrence)
 
-    Examples:
-        >>> df = pd.DataFrame({'name': ['Cowboy Bebop', 'Cowboy Bepop', 'Naruto']})
-        >>> df_clean = deduplicate_animes(df, 'name', threshold=90)
-        >>> len(df_clean)
-        2  # 'Cowboy Bepop' removed as duplicate
-
     Notes:
-        - Compares DataFrame with itself using fuzzy matching
-        - Self-matches (same index) are excluded
-        - When duplicates found, keeps the entry with the lowest index
+        - Uses RapidFuzz process.extract() which is implemented in C++ for speed
+        - Normalizes titles before comparison
     """
-    # Compare df with itself to find potential duplicates
-    matches = fuzzy_match_titles(df, df, title_col, title_col, threshold)
 
-    # Remove self-matches (anime matching with itself)
-    matches = matches[matches["index_df1"] != matches["index_df2"]]
-
-    # Identify indices to drop
-    # For each pair (A, B), we drop B (the higher index)
     indices_to_drop = set()
-    for _, match in matches.iterrows():
-        idx1 = match["index_df1"]
-        idx2 = match["index_df2"]
-        # Keep the smaller index, drop the larger one
-        indices_to_drop.add(max(idx1, idx2))
+    seen_indices = set()
 
+    # Normalize all titles once (performance optimization)
+    normalized_titles = df[title_col].apply(normalize_title)
+
+    for idx in df.index:
+        # Skip if already marked as duplicate
+        if idx in seen_indices:
+            continue
+
+        title = normalized_titles.loc[idx]
+
+        # Find all matches for this title using RapidFuzz process
+        # This is MUCH faster than manual double loop (implemented in C++)
+        matches = process.extract(
+            title,
+            normalized_titles,
+            scorer=fuzz.ratio,
+            score_cutoff=threshold,
+            limit=None,  # Return all matches above threshold
+        )
+
+        # Process matches
+        for match_title, score, match_idx in matches:
+            if match_idx != idx and match_idx not in seen_indices:
+                # Keep the first occurrence (lower index)
+                if match_idx > idx:
+                    indices_to_drop.add(match_idx)
+                    seen_indices.add(match_idx)
+
+    # Return DataFrame without duplicates
     return df.drop(index=list(indices_to_drop)).reset_index(drop=True)
 
 

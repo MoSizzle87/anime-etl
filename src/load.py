@@ -10,6 +10,36 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
 
 
+def drop_schema(engine: Engine) -> None:
+    """
+    Drop all tables in the star schema.
+
+    Useful for development to ensure a clean state before recreating tables.
+
+    Args:
+        engine: SQLAlchemy engine connected to PostgreSQL
+
+    Notes:
+        - Uses CASCADE to automatically drop dependent objects
+        - Safe to call even if tables don't exist (IF EXISTS)
+    """
+    drop_statements = [
+        "DROP TABLE IF EXISTS anime_genre CASCADE",
+        "DROP TABLE IF EXISTS anime_studio CASCADE",
+        "DROP TABLE IF EXISTS f_anime_ratings CASCADE",
+        "DROP TABLE IF EXISTS d_anime CASCADE",
+        "DROP TABLE IF EXISTS d_genre CASCADE",
+        "DROP TABLE IF EXISTS d_studio CASCADE",
+    ]
+
+    with engine.connect() as connection:
+        for sql in drop_statements:
+            connection.execute(text(sql))
+        connection.commit()
+
+    print("✅ Existing tables dropped successfully")
+
+
 # --- Create Tables ---
 def create_schema(engine: Engine) -> None:
     """
