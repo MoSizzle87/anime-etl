@@ -3,18 +3,24 @@ Main ETL pipeline orchestrator.
 Executes the full Extract → Transform → Load workflow.
 """
 
+import time
+
 import pandas as pd
 from sqlalchemy import text
 
 from src.config import get_db_engine, load_config
 from src.extract import extract_anilist_graphql, extract_jikan_api, extract_kaggle_csv
 from src.load import create_schema, drop_schema, load_dimensions, load_facts
+from src.logger import format_duration, setup_logging
 from src.transform import (
     calculate_aggregated_scores,
     convert_anilist_to_dataframe,
     convert_jikan_to_dataframe,
     deduplicate_animes,
 )
+
+# Setup logging
+logger = setup_logging()
 
 
 def run_pipeline():
@@ -26,35 +32,44 @@ def run_pipeline():
     2. TRANSFORM: Clean, deduplicate, aggregate scores
     3. LOAD: Create schema and insert into PostgreSQL
     """
-    print("=" * 80)
-    print("🎌 ANIME ETL PIPELINE - START")
-    print("=" * 80)
+    pipeline_start = time.time()
+
+    logger.info("=" * 80)
+    logger.info("🎌 ANIME ETL PIPELINE - START")
+    logger.info("=" * 80)
 
     # Load configuration
     config = load_config()
     engine = get_db_engine()
 
     # ========== EXTRACT ==========
-    print("\n📥 PHASE 1: EXTRACT")
-    print("-" * 80)
+    logger.info("\n📥 PHASE 1: EXTRACT")
+    logger.info("-" * 80)
 
     # Extract Kaggle CSV (full dataset)
-    print("  → Loading Kaggle dataset...")
+    logger.info("  → Loading Kaggle dataset...")
+    start = time.time()
     csv_path = f"{config['data_raw_path']}/anime.csv"
     df_kaggle = extract_kaggle_csv(csv_path)
-    print(f"    ✓ Loaded {len(df_kaggle)} animes from Kaggle")
-
+    elapsed = time.time() - start
+    logger.info(
+        f"    ✓ Loaded {len(df_kaggle)} animes (completed in {format_duration(elapsed)})"
+    )
     # Extract Jikan API (top 500 most popular animes)
-    print("  → Fetching from Jikan API (top 2000 animes)...")
-    print("    ⏱️  This will take ~28 minutes (rate limit: 3 req/sec)...")
+    logger.info("  → Fetching from Jikan API (top 2000 animes)...")
+    start = time.time()
     top_anime_ids = df_kaggle.nlargest(2000, "members")["anime_id"].tolist()
     jikan_data = extract_jikan_api(
         anime_ids=top_anime_ids, base_url=config["jikan_api_base_url"]
     )
-    print(f"    ✓ Fetched {len(jikan_data)} animes from Jikan API")
+    elapsed = time.time() - start
+    logger.info(
+        f"    ✓ Fetched {len(jikan_data)} animes (completed in {format_duration(elapsed)})"
+    )
 
     # Extract AniList GraphQL (top 50 trending animes)
-    print("  → Fetching from AniList GraphQL (top 50 trending)...")
+    logger.info("  → Fetching from AniList GraphQL (top 50 trending)...")
+    start = time.time()
     anilist_query = """
     query ($page: Int, $perPage: Int) {
       Page(page: $page, perPage: $perPage) {
@@ -76,52 +91,69 @@ def run_pipeline():
         variables={"page": 1, "perPage": 50},
         api_url=config["anilist_api_url"],
     )
-    print(f"    ✓ Fetched AniList trending data")
+    elapsed = time.time() - start
+    logger.info(
+        f"    ✓ Fetched AniList trending data (completed in {format_duration(elapsed)})"
+    )
 
     # ========== TRANSFORM ==========
-    print("\n🔄 PHASE 2: TRANSFORM")
-    print("-" * 80)
+    logger.info("\n🔄 PHASE 2: TRANSFORM")
+    logger.info("-" * 80)
 
     # Deduplicate Kaggle data
-    print("  → Deduplicating animes...")
-    print("    ⏱️  This will take ~10 minutes (fuzzy matching 12k animes)...")
+    logger.info("  → Deduplicating animes...")
+    start = time.time()
     df_kaggle_clean = deduplicate_animes(df_kaggle, "name", threshold=90)
-    print(f"    ✓ Removed {len(df_kaggle) - len(df_kaggle_clean)} duplicates")
+    elapsed = time.time() - start
+    logger.info(
+        f"    ✓ Removed {len(df_kaggle) - len(df_kaggle_clean)} duplicates (completed in {format_duration(elapsed)})"
+    )
 
     # Convert Jikan data to DataFrame
-    df_jikan = None
     if jikan_data:
-        print("  → Converting Jikan data...")
+        logger.info("  → Converting Jikan data...")
+        start = time.time()
         df_jikan = convert_jikan_to_dataframe(jikan_data)
-        print(f"    ✓ Converted {len(df_jikan)} Jikan records")
+        elapsed = time.time() - start
+        logger.info(
+            f"    ✓ Converted {len(df_jikan)} Jikan records (completed in {format_duration(elapsed)})"
+        )
+    else:
+        df_jikan = None
 
     # Convert AniList data to DataFrame
-    df_anilist = None
     if anilist_data:
-        print("  → Converting AniList data...")
+        logger.info("  → Converting AniList data...")
+        start = time.time()
         df_anilist = convert_anilist_to_dataframe(anilist_data)
-        print(f"    ✓ Converted {len(df_anilist)} AniList records")
+        elapsed = time.time() - start
+        logger.info(
+            f"    ✓ Converted {len(df_anilist)} AniList records (completed in {format_duration(elapsed)})"
+        )
+    else:
+        df_anilist = None
 
-    # Calculate aggregated scores (Kaggle + Jikan + AniList)
-    print("  → Calculating aggregated scores...")
+    # Calculate aggregated scores
+    logger.info("  → Calculating aggregated scores...")
+    start = time.time()
     df_scores = calculate_aggregated_scores(
         df_kaggle=df_kaggle_clean[["anime_id", "rating"]],
-        df_jikan=(
-            df_jikan
-            if df_jikan is not None
-            else pd.DataFrame(columns=["mal_id", "score"])
-        ),
-        df_anilist=(
-            df_anilist
-            if df_anilist is not None
-            else pd.DataFrame(columns=["idMal", "averageScore"])
-        ),
+        df_jikan=df_jikan
+        if df_jikan is not None
+        else pd.DataFrame(columns=["mal_id", "score"]),
+        df_anilist=df_anilist
+        if df_anilist is not None
+        else pd.DataFrame(columns=["idMal", "averageScore"]),
     )
-    print(f"    ✓ Calculated scores for {len(df_scores)} animes")
+    elapsed = time.time() - start
+    logger.info(
+        f"    ✓ Calculated scores for {len(df_scores)} animes (completed in {format_duration(elapsed)})"
+    )
 
     # Merge Jikan data for synopsis and studios
     if df_jikan is not None:
-        print("  → Merging Kaggle + Jikan data...")
+        logger.info("  → Merging Kaggle + Jikan data...")
+        start = time.time()
         df_kaggle_clean = df_kaggle_clean.merge(
             df_jikan[["mal_id", "synopsis", "studios"]],
             left_on="anime_id",
@@ -133,32 +165,43 @@ def run_pipeline():
         enriched_count = (
             df_kaggle_clean["synopsis"].apply(lambda x: len(str(x)) > 0).sum()
         )
-        print(f"    ✓ Enriched {enriched_count} animes with Jikan data")
+        elapsed = time.time() - start
+        logger.info(
+            f"    ✓ Enriched {enriched_count} animes with Jikan data (completed in {format_duration(elapsed)})"
+        )
     else:
         df_kaggle_clean["synopsis"] = ""
         df_kaggle_clean["studios"] = ""
 
     # Prepare dimension: d_anime
-    print("  → Preparing anime dimension...")
+    logger.info("  → Preparing anime dimension...")
+    start = time.time()
     df_anime = df_kaggle_clean[["anime_id", "name", "type", "episodes"]].copy()
     df_anime.rename(columns={"name": "title"}, inplace=True)
     df_anime["synopsis"] = df_kaggle_clean.get("synopsis", "")
-    # Clean episodes column: convert "Unknown" to None
     df_anime["episodes"] = pd.to_numeric(df_anime["episodes"], errors="coerce")
-    print(f"    ✓ Prepared {len(df_anime)} animes")
+    elapsed = time.time() - start
+    logger.info(
+        f"    ✓ Prepared {len(df_anime)} animes (completed in {format_duration(elapsed)})"
+    )
 
     # Prepare dimension: d_genre
-    print("  → Preparing genre dimension...")
+    logger.info("  → Preparing genre dimension...")
+    start = time.time()
     all_genres = []
     for genres_str in df_kaggle_clean["genre"].dropna():
         genres_list = [g.strip() for g in str(genres_str).split(",")]
         all_genres.extend(genres_list)
     unique_genres = sorted(set(all_genres))
     df_genres = pd.DataFrame({"genre_name": unique_genres})
-    print(f"    ✓ Found {len(df_genres)} unique genres")
+    elapsed = time.time() - start
+    logger.info(
+        f"    ✓ Found {len(df_genres)} unique genres (completed in {format_duration(elapsed)})"
+    )
 
-    # Prepare dimension: d_studio (from Jikan data)
-    print("  → Preparing studio dimension...")
+    # Prepare dimension: d_studio
+    logger.info("  → Preparing studio dimension...")
+    start = time.time()
     all_studios = []
     if "studios" in df_kaggle_clean.columns:
         for studios_str in df_kaggle_clean["studios"].dropna():
@@ -168,17 +211,25 @@ def run_pipeline():
 
     unique_studios = sorted(set(all_studios)) if all_studios else ["Unknown"]
     df_studios = pd.DataFrame({"studio_name": unique_studios})
-    print(f"    ✓ Prepared {len(df_studios)} studios")
+    elapsed = time.time() - start
+    logger.info(
+        f"    ✓ Prepared {len(df_studios)} studios (completed in {format_duration(elapsed)})"
+    )
 
-    # Prepare fact: f_anime_ratings (from aggregated scores)
-    print("  → Preparing ratings fact table...")
+    # Prepare fact: f_anime_ratings
+    logger.info("  → Preparing ratings fact table...")
+    start = time.time()
     df_ratings = df_scores[
         ["anime_id", "mal_score", "anilist_score", "avg_score"]
     ].copy()
-    print(f"    ✓ Prepared {len(df_ratings)} ratings")
+    elapsed = time.time() - start
+    logger.info(
+        f"    ✓ Prepared {len(df_ratings)} ratings (completed in {format_duration(elapsed)})"
+    )
 
     # Prepare linking table: anime_genre
-    print("  → Preparing anime-genre relationships...")
+    logger.info("  → Preparing anime-genre relationships...")
+    start = time.time()
     anime_genre_list = []
     for _, row in df_kaggle_clean.iterrows():
         anime_id = row["anime_id"]
@@ -187,15 +238,17 @@ def run_pipeline():
             genres_list = [g.strip() for g in str(genres_str).split(",")]
             for genre in genres_list:
                 anime_genre_list.append({"anime_id": anime_id, "genre_name": genre})
+
     df_anime_genres = pd.DataFrame(anime_genre_list)
-
-    # Remove duplicates (same anime_id + genre_name combination)
     df_anime_genres = df_anime_genres.drop_duplicates(subset=["anime_id", "genre_name"])
-
-    print(f"    ✓ Prepared {len(df_anime_genres)} anime-genre relationships")
+    elapsed = time.time() - start
+    logger.info(
+        f"    ✓ Prepared {len(df_anime_genres)} anime-genre relationships (completed in {format_duration(elapsed)})"
+    )
 
     # Prepare linking table: anime_studio
-    print("  → Preparing anime-studio relationships...")
+    logger.info("  → Preparing anime-studio relationships...")
+    start = time.time()
     anime_studio_list = []
     if "studios" in df_kaggle_clean.columns:
         for _, row in df_kaggle_clean.iterrows():
@@ -213,33 +266,74 @@ def run_pipeline():
         if anime_studio_list
         else pd.DataFrame(columns=["anime_id", "studio_name"])
     )
-    # Remove duplicates (same anime_id + studio_name combination)
+
     if len(df_anime_studios) > 0:
         df_anime_studios = df_anime_studios.drop_duplicates(
             subset=["anime_id", "studio_name"]
         )
 
-    print(f"    ✓ Prepared {len(df_anime_studios)} anime-studio relationships")
+    elapsed = time.time() - start
+    logger.info(
+        f"    ✓ Prepared {len(df_anime_studios)} anime-studio relationships (completed in {format_duration(elapsed)})"
+    )
 
     # ========== LOAD ==========
-    print("\n💾 PHASE 3: LOAD")
-    print("-" * 80)
+    logger.info("\n💾 PHASE 3: LOAD")
+    logger.info("-" * 80)
 
-    # Drop existing tables (for development - ensures clean state)
-    print("  → Dropping existing tables...")
+    # Drop existing tables
+    logger.info("  → Dropping existing tables...")
+    start = time.time()
     drop_schema(engine)
+    elapsed = time.time() - start
+    logger.info(
+        f"    ✓ Dropped existing tables (completed in {format_duration(elapsed)})"
+    )
 
     # Create schema
-    print("  → Creating database schema...")
+    logger.info("  → Creating database schema...")
+    start = time.time()
     create_schema(engine)
+    elapsed = time.time() - start
+    logger.info(f"    ✓ Schema created (completed in {format_duration(elapsed)})")
 
     # Load dimensions
-    print("  → Loading dimensions...")
+    logger.info("  → Loading dimensions...")
+    start = time.time()
     load_dimensions(engine, df_anime, df_genres, df_studios)
+    elapsed = time.time() - start
+    logger.info(f"    ✓ Loaded dimensions (completed in {format_duration(elapsed)})")
 
     # Load facts
-    print("  → Loading facts and linking tables...")
+    logger.info("  → Loading facts and linking tables...")
+    start = time.time()
     load_facts(engine, df_ratings, df_anime_genres, df_anime_studios)
+    elapsed = time.time() - start
+    logger.info(
+        f"    ✓ Loaded facts and linking tables (completed in {format_duration(elapsed)})"
+    )
+
+    # Final summary
+    pipeline_elapsed = time.time() - pipeline_start
+
+    logger.info("\n" + "=" * 80)
+    logger.info("✅ PIPELINE COMPLETED SUCCESSFULLY")
+    logger.info("=" * 80)
+    logger.info(f"\n⏱️  Total execution time: {format_duration(pipeline_elapsed)}")
+    logger.info(f"\n📊 Summary:")
+    logger.info(
+        f"   - Animes processed: {len(df_kaggle)} → {len(df_anime)} ({len(df_kaggle) - len(df_anime)} duplicates removed)"
+    )
+    logger.info(
+        f"   - Jikan enrichments: {len(jikan_data) if jikan_data else 0} animes"
+    )
+    logger.info(
+        f"   - AniList data: {len(df_anilist) if df_anilist is not None else 0} trending animes"
+    )
+    logger.info(f"   - Genres: {len(df_genres)}")
+    logger.info(f"   - Studios: {len(df_studios)}")
+    logger.info(f"   - Anime-Genre links: {len(df_anime_genres)}")
+    logger.info(f"   - Anime-Studio links: {len(df_anime_studios)}")
 
 
 if __name__ == "__main__":

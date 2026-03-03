@@ -37,8 +37,6 @@ def drop_schema(engine: Engine) -> None:
             connection.execute(text(sql))
         connection.commit()
 
-    print("✅ Existing tables dropped successfully")
-
 
 # --- Create Tables ---
 def create_schema(engine: Engine) -> None:
@@ -120,8 +118,6 @@ def create_schema(engine: Engine) -> None:
             connection.execute(text(sql))
         connection.commit()  # Commit all changes
 
-    print("✅ Star schema created successfully")
-
 
 # --- Load dimensions ---
 def load_dimensions(
@@ -156,8 +152,6 @@ def load_dimensions(
         "d_studio", engine, if_exists="append", index=False
     )
 
-    print("✅ Dimensions loaded successfully")
-
 
 # --- Load facts & kinking tables ---
 def load_facts(
@@ -184,7 +178,6 @@ def load_facts(
     df_ratings[["anime_id", "mal_score", "anilist_score", "avg_score"]].to_sql(
         "f_anime_ratings", engine, if_exists="append", index=False
     )
-    print("  ✓ Loaded f_anime_ratings")
 
     # 2. Load anime_genre (requires genre_id lookup)
     # Read d_genre to get genre_id mapping
@@ -207,7 +200,6 @@ def load_facts(
     df_anime_genres_with_id[["anime_id", "genre_id"]].to_sql(
         "anime_genre", engine, if_exists="append", index=False
     )
-    print("  ✓ Loaded anime_genre")
 
     # 3. Load anime_studio (requires studio_id lookup)
     # Read d_studio to get studio_id mapping
@@ -232,6 +224,3 @@ def load_facts(
     df_anime_studios_with_id[["anime_id", "studio_id"]].to_sql(
         "anime_studio", engine, if_exists="append", index=False
     )
-    print("  ✓ Loaded anime_studio")
-
-    print("✅ Facts and linking tables loaded successfully")

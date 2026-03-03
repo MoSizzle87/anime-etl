@@ -38,6 +38,9 @@ dependencies = [
 
     # API rate limiting
     "ratelimit==2.2.1",
+
+    # Read logger configuration file
+    "pyyaml==6.0.2",
 ]
 
 [project.optional-dependencies]
