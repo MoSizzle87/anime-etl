@@ -45,9 +45,9 @@ def run_pipeline():
     print(f"    ✓ Loaded {len(df_kaggle)} animes from Kaggle")
 
     # Extract Jikan API (top 500 most popular animes)
-    print("  → Fetching from Jikan API (top 500 animes)...")
-    print("    ⏱️  This will take ~3 minutes (rate limit: 3 req/sec)...")
-    top_anime_ids = df_kaggle.nlargest(500, "members")["anime_id"].tolist()
+    print("  → Fetching from Jikan API (top 2000 animes)...")
+    print("    ⏱️  This will take ~28 minutes (rate limit: 3 req/sec)...")
+    top_anime_ids = df_kaggle.nlargest(2000, "members")["anime_id"].tolist()
     jikan_data = extract_jikan_api(
         anime_ids=top_anime_ids, base_url=config["jikan_api_base_url"]
     )
