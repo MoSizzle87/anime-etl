@@ -8,6 +8,7 @@ from typing import Any, Dict
 
 from dotenv import load_dotenv
 from sqlalchemy import create_engine
+from sqlalchemy.engine import Engine
 
 
 def load_config() -> Dict[str, Any]:
@@ -43,7 +44,7 @@ def load_config() -> Dict[str, Any]:
     }
 
 
-def get_db_engine():
+def get_db_engine() -> Engine:
     """
     Create and return a SQLAlchemy engine for PostgreSQL.
 

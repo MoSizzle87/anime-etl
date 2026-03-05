@@ -3,7 +3,7 @@ Data extraction module for anime ETL pipeline.
 Handles extraction from Kaggle CSV, Jikan API, and AniList GraphQL.
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, cast
 
 import pandas as pd
 import requests
@@ -53,7 +53,7 @@ def extract_kaggle_csv(file_path: str) -> pd.DataFrame:
 
 
 # --- TASK 2: Jikan REST API ---
-def should_retry_http_error(exception) -> bool:
+def should_retry_http_error(exception: BaseException) -> bool:
     """
     Determine if HTTP error should be retried.
     Retry on 429 (rate limit) and 5xx (server errors).
@@ -75,8 +75,8 @@ def should_retry_http_error(exception) -> bool:
     )
 
 
-@sleep_and_retry
-@limits(calls=3, period=1)  # 3 req/sec
+@sleep_and_retry  # type: ignore[misc]
+@limits(calls=3, period=1)  # type: ignore[misc]
 @retry(
     stop=stop_after_attempt(3),
     wait=wait_exponential(multiplier=1, min=1, max=10),
@@ -100,7 +100,7 @@ def fetch_anime_jikan(anime_id: int, base_url: str) -> Optional[Dict[str, Any]]:
     try:
         response = requests.get(f"{base_url}/anime/{anime_id}", timeout=10)
         response.raise_for_status()
-        return response.json()["data"]
+        return cast(Dict[str, Any], response.json()["data"])
     except requests.exceptions.HTTPError as e:
         if e.response.status_code == 404:
             return None
@@ -149,4 +149,4 @@ def extract_anilist_graphql(
         api_url, json={"query": query, "variables": variables}, timeout=10
     )
     response.raise_for_status()
-    return response.json()
+    return cast(Dict[str, Any], response.json())

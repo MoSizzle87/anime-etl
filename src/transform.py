@@ -15,27 +15,14 @@ from rapidfuzz import fuzz, process
 def normalize_title(title: str) -> str:
     """
     Normalize anime title for fuzzy matching.
-
-    Normalization steps:
-    1. Lowercase
-    2. Remove accents (é → e)
-    3. Remove punctuation
-    4. Remove extra spaces
-    5. Strip whitespace
+    Converts to lowercase, removes accents and punctuation.
 
     Args:
         title: Raw anime title
 
     Returns:
-        Normalized title
-
-    Examples:
-        >>> normalize_title("Fullmetal Alchemist: Brotherhood")
-        'fullmetal alchemist brotherhood'
-        >>> normalize_title("Shingeki no Kyojin!")
-        'shingeki no kyojin'
+        Normalized title string
     """
-
     # --- Handling lower and accents ---
     # All titles in lower
     title = title.lower()
@@ -70,36 +57,17 @@ def fuzzy_match_titles(
 ) -> pd.DataFrame:
     """
     Find fuzzy matches between two DataFrames based on title similarity.
-
-    Uses RapidFuzz to compute similarity scores between normalized titles.
-    Returns ALL matches with score >= threshold (not just the best match).
+    Uses RapidFuzz to compare normalized titles.
 
     Args:
         df1: First DataFrame (e.g., Kaggle data)
         df2: Second DataFrame (e.g., Jikan data)
-        title_col1: Column name for titles in df1 (e.g., 'name')
-        title_col2: Column name for titles in df2 (e.g., 'title')
-        threshold: Minimum similarity score (0-100) to consider a match (default: 85)
+        title_col1: Column name for titles in df1
+        title_col2: Column name for titles in df2
+        threshold: Minimum similarity score (0-100, default: 85)
 
     Returns:
-        DataFrame with columns:
-            - index_df1: Index from df1
-            - index_df2: Index from df2
-            - title_df1: Original title from df1
-            - title_df2: Matched title from df2
-            - score: Similarity score (0-100)
-
-    Examples:
-        >>> df_kaggle = pd.DataFrame({'name': ['Cowboy Bebop', 'Naruto']})
-        >>> df_jikan = pd.DataFrame({'title': ['Cowboy Bebop', 'One Piece']})
-        >>> matches = fuzzy_match_titles(df_kaggle, df_jikan, 'name', 'title')
-        >>> len(matches)
-        1  # Only 'Cowboy Bebop' matches with score 100
-
-    Notes:
-        - Titles are normalized before comparison (lowercase, no accents, no punctuation)
-        - Uses RapidFuzz fuzz.ratio() for similarity scoring
-        - Returns ALL matches >= threshold, not just best match
+        DataFrame with matched pairs (index_df1, index_df2, titles, score)
     """
     matches = []
 
@@ -133,20 +101,15 @@ def deduplicate_animes(
 ) -> pd.DataFrame:
     """
     Remove duplicate animes based on fuzzy title matching.
-
-    Optimized version using RapidFuzz process for better performance.
+    Keeps first occurrence when duplicates are found.
 
     Args:
         df: DataFrame with anime data
         title_col: Column name containing titles
-        threshold: Similarity threshold for duplicates (default: 90)
+        threshold: Similarity threshold (0-100, default: 90)
 
     Returns:
-        DataFrame with duplicates removed (keeps first occurrence)
-
-    Notes:
-        - Uses RapidFuzz process.extract() which is implemented in C++ for speed
-        - Normalizes titles before comparison
+        DataFrame with duplicates removed
     """
 
     indices_to_drop = set()
@@ -188,22 +151,15 @@ def deduplicate_animes(
 def convert_jikan_to_dataframe(jikan_data: List[Dict[str, Any]]) -> pd.DataFrame:
     """
     Convert Jikan API response to DataFrame.
-
-    Transforms list of anime dicts from Jikan API into a clean DataFrame.
-    Nested fields (studios, genres) are flattened into comma-separated strings.
+    Flattens nested fields (studios, genres) into comma-separated strings.
 
     Args:
         jikan_data: List of anime dicts from extract_jikan_api()
 
     Returns:
-        DataFrame with columns: mal_id, title, synopsis, score, scored_by, studios, genres
-        Empty DataFrame if input is empty
-
-    Notes:
-        - Studios list is converted to comma-separated string of studio names
-        - Genres list is converted to comma-separated string of genre names
-        - Only essential columns are kept in the output DataFrame
+        DataFrame with essential columns or empty DataFrame if no data
     """
+
     # Return empty DataFrame if no data
     if not jikan_data:
         return pd.DataFrame()
@@ -241,22 +197,13 @@ def convert_jikan_to_dataframe(jikan_data: List[Dict[str, Any]]) -> pd.DataFrame
 def convert_anilist_to_dataframe(anilist_data: Dict[str, Any]) -> pd.DataFrame:
     """
     Convert AniList GraphQL response to DataFrame.
-
-    Extracts anime data from nested AniList GraphQL response structure
-    and flattens the title field into separate romaji/english columns.
+    Extracts media from nested structure and flattens title fields.
 
     Args:
-        anilist_data: Response dict from extract_anilist_graphql()
-                      Expected structure: {'data': {'Page': {'media': [...]}}}
+        anilist_data: GraphQL response from extract_anilist_graphql()
 
     Returns:
-        DataFrame with columns: id, idMal, title_romaji, title_english, averageScore, trending
-        Empty DataFrame if no media found in response
-
-    Notes:
-        - AniList uses nested 'title' object with romaji/english fields
-        - idMal links to MyAnimeList ID for cross-referencing
-        - averageScore is AniList's community score (0-100)
+        DataFrame with anime data or empty DataFrame if no media found
     """
     # Extract media list from nested structure
     # AniList structure: {'data': {'Page': {'media': [...]}}}

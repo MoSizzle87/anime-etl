@@ -18,10 +18,6 @@ def drop_schema(engine: Engine) -> None:
 
     Args:
         engine: SQLAlchemy engine connected to PostgreSQL
-
-    Notes:
-        - Uses CASCADE to automatically drop dependent objects
-        - Safe to call even if tables don't exist (IF EXISTS)
     """
     drop_statements = [
         "DROP TABLE IF EXISTS anime_genre CASCADE",
@@ -42,21 +38,10 @@ def drop_schema(engine: Engine) -> None:
 def create_schema(engine: Engine) -> None:
     """
     Create star schema tables in PostgreSQL.
-
-    Creates 5 tables:
-    - d_anime: Dimension table for anime metadata
-    - d_genre: Dimension table for genres
-    - d_studio: Dimension table for studios
-    - f_anime_ratings: Fact table for scores
-    - anime_genre, anime_studio: Linking tables (many-to-many)
+    Creates dimensions (anime, genre, studio), fact table (ratings), and linking tables.
 
     Args:
         engine: SQLAlchemy engine connected to PostgreSQL
-
-    Notes:
-        - Uses IF NOT EXISTS to avoid errors on re-runs
-        - Foreign keys ensure referential integrity
-        - ON DELETE CASCADE for automatic cleanup
     """
     # Define SQL statements for all tables
     sql_statements = [
@@ -131,14 +116,11 @@ def load_dimensions(
 
     Args:
         engine: SQLAlchemy engine
-        df_anime: DataFrame with columns: anime_id, title, type, episodes, synopsis
-        df_genres: DataFrame with column: genre_name (unique genres)
-        df_studios: DataFrame with column: studio_name (unique studios)
-
-    Notes:
-        - Uses to_sql() with if_exists='append' for idempotent inserts
-        - d_genre and d_studio use genre_id/studio_id as SERIAL (auto-increment)
+        df_anime: DataFrame with anime metadata
+        df_genres: DataFrame with unique genre names
+        df_studios: DataFrame with unique studio names
     """
+
     # Load d_anime
     df_anime[["anime_id", "title", "type", "episodes", "synopsis"]].to_sql(
         "d_anime", engine, if_exists="append", index=False
@@ -165,14 +147,9 @@ def load_facts(
 
     Args:
         engine: SQLAlchemy engine
-        df_ratings: DataFrame with columns: anime_id, mal_score, anilist_score, avg_score
-        df_anime_genres: DataFrame with columns: anime_id, genre_name
-        df_anime_studios: DataFrame with columns: anime_id, studio_name
-
-    Notes:
-        - f_anime_ratings is straightforward (anime_id + scores)
-        - Linking tables require mapping genre_name → genre_id and studio_name → studio_id
-        - Reads d_genre and d_studio from database to get IDs
+        df_ratings: DataFrame with anime scores
+        df_anime_genres: DataFrame with anime-genre relationships
+        df_anime_studios: DataFrame with anime-studio relationships
     """
     # 1. Load f_anime_ratings
     df_ratings[["anime_id", "mal_score", "anilist_score", "avg_score"]].to_sql(

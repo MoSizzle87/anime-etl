@@ -73,3 +73,8 @@ ignore_missing_imports = true
 [tool.flake8]
 max-line-length = 88
 exclude = [".venv", "__pycache__", "data/"]
+
+[dependency-groups]
+dev = [
+    "types-pyyaml>=6.0.12.20250915",
+]

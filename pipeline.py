@@ -28,9 +28,9 @@ def run_pipeline():
     Execute full ETL pipeline.
 
     Steps:
-    1. EXTRACT: Load data from Kaggle CSV, Jikan API, AniList GraphQL
-    2. TRANSFORM: Clean, deduplicate, aggregate scores
-    3. LOAD: Create schema and insert into PostgreSQL
+        1. EXTRACT: Load data from Kaggle CSV, Jikan API, AniList GraphQL
+        2. TRANSFORM: Clean, deduplicate, aggregate scores
+        3. LOAD: Create schema and insert into PostgreSQL
     """
     pipeline_start = time.time()
 
