@@ -15,9 +15,6 @@ __pycache__/
 venv/
 *.egg-info/
 
-# --- Data (too large for Docker image) ---
-data/
-
 # --- Tests ---
 tests/
 .pytest_cache/
@@ -45,3 +42,7 @@ docs/
 # --- Other ---
 *.log
 .DS_Store
+
+# --- Dev files ---
+CLAUDE.md
+Dockerfile.env.local

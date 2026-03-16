@@ -11,13 +11,18 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U anime_user"]
+      test: ["CMD-SHELL", "pg_isready -U anime_user -d anime_db"]
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - anime-network
 
-  etl:
-    build: .
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: anime-etl:latest
     container_name: anime-etl-app
     depends_on:
       postgres:
@@ -25,7 +30,14 @@ services:
     env_file:
       - .env.docker
     volumes:
-      - ./data:/app/data
+      - ./logs:/app/logs # Persist logs on host
+    networks:
+      - anime-network
+    restart: on-failure
 
 volumes:
   postgres_data:
+
+networks:
+  anime-network:
+    driver: bridge
