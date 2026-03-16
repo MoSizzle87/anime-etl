@@ -28,10 +28,9 @@ def drop_schema(engine: Engine) -> None:
         "DROP TABLE IF EXISTS d_studio CASCADE",
     ]
 
-    with engine.connect() as connection:
+    with engine.begin() as connection:
         for sql in drop_statements:
             connection.execute(text(sql))
-        connection.commit()
 
 
 # --- Create Tables ---
@@ -98,10 +97,9 @@ def create_schema(engine: Engine) -> None:
     ]
 
     # Execute all CREATE TABLE statements
-    with engine.connect() as connection:
+    with engine.begin() as connection:
         for sql in sql_statements:
             connection.execute(text(sql))
-        connection.commit()  # Commit all changes
 
 
 # --- Load dimensions ---

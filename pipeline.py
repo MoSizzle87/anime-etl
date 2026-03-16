@@ -178,7 +178,9 @@ def run_pipeline():
     start = time.time()
     df_anime = df_kaggle_clean[["anime_id", "name", "type", "episodes"]].copy()
     df_anime.rename(columns={"name": "title"}, inplace=True)
-    df_anime["synopsis"] = df_kaggle_clean.get("synopsis", "")
+    df_anime["synopsis"] = (
+        df_kaggle_clean["synopsis"] if "synopsis" in df_kaggle_clean.columns else ""
+    )
     df_anime["episodes"] = pd.to_numeric(df_anime["episodes"], errors="coerce")
     elapsed = time.time() - start
     logger.info(
@@ -253,7 +255,7 @@ def run_pipeline():
     if "studios" in df_kaggle_clean.columns:
         for _, row in df_kaggle_clean.iterrows():
             anime_id = row["anime_id"]
-            studios_str = row.get("studios")
+            studios_str = row["studios"]
             if pd.notna(studios_str) and str(studios_str).strip() != "":
                 studios_list = [s.strip() for s in str(studios_str).split(",")]
                 for studio in studios_list:

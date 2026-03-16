@@ -69,3 +69,6 @@ Desktop.ini
 # --- Jupyter (if used for exploration) ---
 .ipynb_checkpoints/
 *.ipynb
+
+# --- Claude Code ---
+CLAUDE.md
