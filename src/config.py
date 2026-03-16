@@ -38,8 +38,6 @@ def load_config() -> Dict[str, Any]:
         ),  # Dev only
         "data_raw_path": os.getenv("DATA_RAW_PATH", "data/raw"),
         "data_processed_path": os.getenv("DATA_PROCESSED_PATH", "data/processed"),
-        "jikan_rate_limit_rps": int(os.getenv("JIKAN_RATE_LIMIT_RPS", "3")),
-        "anilist_rate_limit_rpm": int(os.getenv("ANILIST_RATE_LIMIT_RPM", "90")),
         "log_level": os.getenv("LOG_LEVEL", "INFO"),
     }
 

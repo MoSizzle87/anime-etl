@@ -30,9 +30,6 @@ dependencies = [
     # GraphQL client for AniList API
     "graphql-core==3.2.6",
 
-    # Data quality checks (Great Expectations)
-    "great-expectations==1.10.0",
-
     # Retry logic for API calls
     "tenacity==9.1.2",
 

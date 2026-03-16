@@ -138,6 +138,8 @@ def load_graphql_query(filename: str) -> str:
     return query_path.read_text(encoding="utf-8")
 
 
+@sleep_and_retry  # type: ignore[misc]
+@limits(calls=90, period=60)  # type: ignore[misc]
 def extract_anilist_graphql(
     query: str, variables: Dict[str, Any], api_url: str
 ) -> Dict[str, Any]:
