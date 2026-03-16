@@ -7,8 +7,14 @@ from unittest.mock import Mock
 
 import pandas as pd
 import pytest
+import requests
 
-from src.extract import extract_anilist_graphql, extract_jikan_api, extract_kaggle_csv
+from src.extract import (
+    extract_anilist_graphql,
+    extract_jikan_api,
+    extract_kaggle_csv,
+    should_retry_http_error,
+)
 
 
 class TestExtractKaggleCsv:
@@ -229,3 +235,67 @@ class TestExtractAnilistGraphql:
             result = extract_anilist_graphql(
                 query=query, variables={}, api_url="https://graphql.anilist.co"
             )
+
+
+class TestShouldRetryHttpError:
+    """Tests for should_retry_http_error helper function."""
+
+    def test_retry_on_429_too_many_requests(self):
+        """Should retry on 429 (rate limit) errors."""
+        error = requests.exceptions.HTTPError()
+        error.response = Mock()
+        error.response.status_code = 429
+
+        assert should_retry_http_error(error) is True
+
+    def test_retry_on_500_server_error(self):
+        """Should retry on 500 (server) errors."""
+        error = requests.exceptions.HTTPError()
+        error.response = Mock()
+        error.response.status_code = 500
+
+        assert should_retry_http_error(error) is True
+
+    def test_retry_on_502_bad_gateway(self):
+        """Should retry on 502 errors."""
+        error = requests.exceptions.HTTPError()
+        error.response = Mock()
+        error.response.status_code = 502
+
+        assert should_retry_http_error(error) is True
+
+    def test_retry_on_503_service_unavailable(self):
+        """Should retry on 503 errors."""
+        error = requests.exceptions.HTTPError()
+        error.response = Mock()
+        error.response.status_code = 503
+
+        assert should_retry_http_error(error) is True
+
+    def test_no_retry_on_404_not_found(self):
+        """Should NOT retry on 404 errors."""
+        error = requests.exceptions.HTTPError()
+        error.response = Mock()
+        error.response.status_code = 404
+
+        assert should_retry_http_error(error) is False
+
+    def test_no_retry_on_400_bad_request(self):
+        """Should NOT retry on 400 errors."""
+        error = requests.exceptions.HTTPError()
+        error.response = Mock()
+        error.response.status_code = 400
+
+        assert should_retry_http_error(error) is False
+
+    def test_no_retry_on_non_http_error(self):
+        """Should NOT retry on non-HTTP errors."""
+        error = ValueError("Some other error")
+
+        assert should_retry_http_error(error) is False
+
+    def test_no_retry_on_error_without_response(self):
+        """Should NOT retry if error has no response attribute."""
+        error = requests.exceptions.RequestException()
+
+        assert should_retry_http_error(error) is False
