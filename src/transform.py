@@ -271,7 +271,9 @@ def calculate_aggregated_scores(
     )
 
     # mal_score: Jikan preferred, fallback to Kaggle
-    df_merged["mal_score"] = df_merged["score"].fillna(df_merged["rating"])
+    df_merged["mal_score"] = (
+        df_merged["score"].fillna(df_merged["rating"]).infer_objects(copy=False)
+    )
 
     # anilist_score: Normalize 0-100 → 0-10 scale
     df_merged["anilist_score"] = df_merged["averageScore"] / 10

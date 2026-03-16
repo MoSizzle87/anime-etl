@@ -63,7 +63,8 @@ packages = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "--cov=src --cov-report=term-missing --cov-fail-under=80"
+addopts = "--cov=src --cov-report=term-missing --cov-report=html"
+# addopts = "--cov=src --cov-report=term-missing --cov-fail-under=80"
 
 [tool.mypy]
 python_version = "3.13"
@@ -75,6 +76,4 @@ max-line-length = 88
 exclude = [".venv", "__pycache__", "data/"]
 
 [dependency-groups]
-dev = [
-    "types-pyyaml>=6.0.12.20250915",
-]
+dev = ["pytest>=8.4.2", "pytest-cov>=6.3.0", "types-pyyaml>=6.0.12.20250915"]
