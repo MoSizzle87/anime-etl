@@ -2,7 +2,6 @@
 Unit tests for extraction module.
 """
 
-from pathlib import Path
 from unittest.mock import Mock
 
 import pandas as pd
@@ -232,7 +231,7 @@ class TestExtractAnilistGraphql:
 
         # Should raise exception or return empty
         with pytest.raises(Exception):
-            result = extract_anilist_graphql(
+            extract_anilist_graphql(
                 query=query, variables={}, api_url="https://graphql.anilist.co"
             )
 

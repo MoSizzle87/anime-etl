@@ -3,10 +3,9 @@ Integration tests for the full pipeline.
 """
 
 import pandas as pd
-import pytest
 from sqlalchemy import text
 
-from src.config import get_db_engine, load_config
+from src.config import get_db_engine
 from src.extract import extract_kaggle_csv
 from src.load import create_schema, drop_schema, load_dimensions
 from src.transform import deduplicate_animes

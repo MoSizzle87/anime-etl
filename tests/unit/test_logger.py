@@ -2,10 +2,6 @@
 Unit tests for logger module.
 """
 
-from pathlib import Path
-
-import pytest
-
 from src.logger import format_duration, setup_logging
 
 

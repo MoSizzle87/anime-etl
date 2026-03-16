@@ -54,7 +54,10 @@ def get_db_engine() -> Engine:
     config = load_config()
 
     # Build connection string using config values
-    connection_string = f"postgresql+psycopg2://{config['db_user']}:{config['db_password']}@{config['db_host']}:{config['db_port']}/{config['db_name']}"
+    connection_string = (
+        f"postgresql+psycopg2://{config['db_user']}:{config['db_password']}"
+        f"@{config['db_host']}:{config['db_port']}/{config['db_name']}"
+    )
 
     # Create and return engine
     engine = create_engine(connection_string)

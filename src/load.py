@@ -3,10 +3,8 @@ Data loading module for anime ETL pipeline.
 Handles creation of star schema and loading data into PostgreSQL.
 """
 
-from typing import Any, Dict, List
-
 import pandas as pd
-from sqlalchemy import create_engine, text
+from sqlalchemy import text
 from sqlalchemy.engine import Engine
 
 
