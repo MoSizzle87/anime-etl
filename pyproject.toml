@@ -76,4 +76,9 @@ max-line-length = 88
 exclude = [".venv", "__pycache__", "data/"]
 
 [dependency-groups]
-dev = ["pytest>=8.4.2", "pytest-cov>=6.3.0", "types-pyyaml>=6.0.12.20250915"]
+dev = [
+    "pytest>=8.4.2",
+    "pytest-cov>=6.3.0",
+    "pytest-mock>=3.15.1",
+    "types-pyyaml>=6.0.12.20250915",
+]
