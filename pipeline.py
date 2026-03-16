@@ -9,7 +9,12 @@ import pandas as pd
 from sqlalchemy import text
 
 from src.config import get_db_engine, load_config
-from src.extract import extract_anilist_graphql, extract_jikan_api, extract_kaggle_csv
+from src.extract import (
+    extract_anilist_graphql,
+    extract_jikan_api,
+    extract_kaggle_csv,
+    load_graphql_query,
+)
 from src.load import create_schema, drop_schema, load_dimensions, load_facts
 from src.logger import format_duration, setup_logging
 from src.transform import (
@@ -70,22 +75,8 @@ def run_pipeline():
     # Extract AniList GraphQL (top 50 trending animes)
     logger.info("  → Fetching from AniList GraphQL (top 50 trending)...")
     start = time.time()
-    anilist_query = """
-    query ($page: Int, $perPage: Int) {
-      Page(page: $page, perPage: $perPage) {
-        media(type: ANIME, sort: TRENDING_DESC) {
-          id
-          idMal
-          title {
-            romaji
-            english
-          }
-          averageScore
-          trending
-        }
-      }
-    }
-    """
+    anilist_query = load_graphql_query("anilist_trending.graphql")
+
     anilist_data = extract_anilist_graphql(
         query=anilist_query,
         variables={"page": 1, "perPage": 50},
@@ -232,16 +223,16 @@ def run_pipeline():
     # Prepare linking table: anime_genre
     logger.info("  → Preparing anime-genre relationships...")
     start = time.time()
-    anime_genre_list = []
-    for _, row in df_kaggle_clean.iterrows():
-        anime_id = row["anime_id"]
-        genres_str = row["genre"]
-        if pd.notna(genres_str):
-            genres_list = [g.strip() for g in str(genres_str).split(",")]
-            for genre in genres_list:
-                anime_genre_list.append({"anime_id": anime_id, "genre_name": genre})
+    df_anime_genres = (
+        df_kaggle_clean[["anime_id", "genre"]]
+        .dropna(subset=["genre"])
+        .assign(genre=lambda x: x["genre"].str.split(","))
+        .explode("genre")
+        .assign(genre_name=lambda x: x["genre"].str.strip())
+        .drop(columns=["genre"])
+        .reset_index(drop=True)
+    )
 
-    df_anime_genres = pd.DataFrame(anime_genre_list)
     df_anime_genres = df_anime_genres.drop_duplicates(subset=["anime_id", "genre_name"])
     elapsed = time.time() - start
     logger.info(
@@ -251,23 +242,19 @@ def run_pipeline():
     # Prepare linking table: anime_studio
     logger.info("  → Preparing anime-studio relationships...")
     start = time.time()
-    anime_studio_list = []
     if "studios" in df_kaggle_clean.columns:
-        for _, row in df_kaggle_clean.iterrows():
-            anime_id = row["anime_id"]
-            studios_str = row["studios"]
-            if pd.notna(studios_str) and str(studios_str).strip() != "":
-                studios_list = [s.strip() for s in str(studios_str).split(",")]
-                for studio in studios_list:
-                    anime_studio_list.append(
-                        {"anime_id": anime_id, "studio_name": studio}
-                    )
-
-    df_anime_studios = (
-        pd.DataFrame(anime_studio_list)
-        if anime_studio_list
-        else pd.DataFrame(columns=["anime_id", "studio_name"])
-    )
+        df_anime_studios = (
+            df_kaggle_clean[["anime_id", "studios"]]
+            .dropna(subset=["studios"])
+            .query('studios.str.strip() != ""')
+            .assign(studios=lambda x: x["studios"].str.split(","))
+            .explode("studios")
+            .assign(studio_name=lambda x: x["studios"].str.strip())
+            .drop(columns=["studios"])
+            .reset_index(drop=True)
+        )
+    else:
+        df_anime_studios = pd.DataFrame(columns=["anime_id", "studio_name"])
 
     if len(df_anime_studios) > 0:
         df_anime_studios = df_anime_studios.drop_duplicates(

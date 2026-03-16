@@ -3,6 +3,7 @@ Data extraction module for anime ETL pipeline.
 Handles extraction from Kaggle CSV, Jikan API, and AniList GraphQL.
 """
 
+from pathlib import Path
 from typing import Any, Dict, List, Optional, cast
 
 import pandas as pd
@@ -127,6 +128,16 @@ def extract_jikan_api(anime_ids: List[int], base_url: str) -> List[Dict[str, Any
 
 
 # --- TASK 3: AniList GraphQL ---
+def load_graphql_query(filename: str) -> str:
+    """Load GraphQL query from file."""
+    query_path = Path(__file__).parent.parent / "queries" / filename
+
+    if not query_path.exists():
+        raise FileNotFoundError(f"GraphQL query not found: {query_path}")
+
+    return query_path.read_text(encoding="utf-8")
+
+
 def extract_anilist_graphql(
     query: str, variables: Dict[str, Any], api_url: str
 ) -> Dict[str, Any]:

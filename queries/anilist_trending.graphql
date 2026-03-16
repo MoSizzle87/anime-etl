@@ -1,0 +1,14 @@
+query ($page: Int, $perPage: Int) {
+  Page(page: $page, perPage: $perPage) {
+    media(type: ANIME, sort: TRENDING_DESC) {
+      id
+      idMal
+      title {
+        romaji
+        english
+      }
+      averageScore
+      trending
+    }
+  }
+}
