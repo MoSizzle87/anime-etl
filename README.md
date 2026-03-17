@@ -151,33 +151,43 @@ graph LR
 ### Star Schema Overview
 ```mermaid
 erDiagram
-    d_anime ||--o{ f_anime_ratings : "1:1"
-    d_anime ||--o{ anime_genre : "1:N"
-    d_anime ||--o{ anime_studio : "1:N"
-    d_genre ||--o{ anime_genre : "1:N"
-    d_studio ||--o{ anime_studio : "1:N"
+    d_anime ||--o{ f_anime_ratings : "has"
+    d_anime ||--o{ anime_genre : "has"
+    d_anime ||--o{ anime_studio : "has"
+    d_genre ||--o{ anime_genre : "belongs_to"
+    d_studio ||--o{ anime_studio : "belongs_to"
     
     d_anime {
         int anime_id PK
-        string title
-        string type
+        varchar title
+        varchar type
         int episodes
         text synopsis
     }
     
     f_anime_ratings {
         int anime_id PK_FK
-        float mal_score
-        float anilist_score
-        float avg_score
+        decimal mal_score
+        decimal anilist_score
+        decimal avg_score
     }
     
     d_genre {
-        string genre_name PK
+        varchar genre_name PK
     }
     
     d_studio {
-        string studio_name PK
+        varchar studio_name PK
+    }
+    
+    anime_genre {
+        int anime_id FK
+        varchar genre_name FK
+    }
+    
+    anime_studio {
+        int anime_id FK
+        varchar studio_name FK
     }
 ```
 
