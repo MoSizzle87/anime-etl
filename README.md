@@ -194,7 +194,9 @@ erDiagram
 
 ### Detailed Schema
 
-**See full schema diagram:** [docs/images/star_schema.png](docs/images/star_schema.png)
+![Star Schema](docs/images/star_schema.png)
+
+*Full star schema with all fields, types, and constraints*
 
 ---
 
