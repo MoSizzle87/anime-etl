@@ -158,36 +158,36 @@ erDiagram
     d_studio ||--o{ anime_studio : "1:N"
     
     d_anime {
-        anime_id PK
-        title string
-        type string
-        episodes int
-        synopsis text
+        int anime_id PK
+        string title
+        string type
+        int episodes
+        string synopsis
     }
     
     f_anime_ratings {
-        anime_id PK-FK
-        mal_score float
-        anilist_score float
-        avg_score float
+        int anime_id PK, FK
+        float mal_score
+        float anilist_score
+        float avg_score
     }
     
     d_genre {
-        genre_name PK
+        string genre_name PK
     }
     
     d_studio {
-        studio_name PK
+        string studio_name PK
     }
     
     anime_genre {
-        anime_id FK
-        genre_name FK
+        int anime_id FK
+        string genre_name FK
     }
     
     anime_studio {
-        anime_id FK
-        studio_name FK
+        int anime_id FK
+        string studio_name FK
     }
 ```
 
