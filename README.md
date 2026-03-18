@@ -6,6 +6,7 @@
 [![Tests](https://img.shields.io/badge/tests-56%20passed-success)](.)
 [![Coverage](https://img.shields.io/badge/coverage-95.6%25-brightgreen)](.)
 [![MyPy](https://img.shields.io/badge/mypy-strict-success)](.)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 > **Production-ready ETL pipeline** extracting anime data from multiple sources, transforming it into a star schema, and loading it into PostgreSQL.
 
@@ -217,6 +218,31 @@ erDiagram
 
 ---
 
+## 📊 Data Sources
+
+### Kaggle Anime Dataset
+- **Source:** [Kaggle - Anime Recommendations Database](https://www.kaggle.com/datasets/CooperUnion/anime-recommendations-database)
+- **Records:** 12,294 animes
+- **Fields:** anime_id, name, genre, type, episodes, rating, members
+- **Last Updated:** September 2019
+- **License:** CC0: Public Domain
+
+### Jikan API (MyAnimeList)
+- **Endpoint:** https://api.jikan.moe/v4
+- **Rate Limit:** 3 requests/second
+- **Records Fetched:** Top 2,000 animes by members
+- **Fields:** synopsis, studios, themes, demographics, relationships
+- **Documentation:** [Jikan API Docs](https://docs.api.jikan.moe/)
+
+### AniList GraphQL API
+- **Endpoint:** https://graphql.anilist.co
+- **Rate Limit:** 90 requests/minute
+- **Records Fetched:** Top 50 trending animes
+- **Fields:** trending rank, average score, popularity
+- **Documentation:** [AniList API Docs](https://anilist.gitbook.io/anilist-apiv2-docs)
+
+---
+
 ## 🛠️ Development
 
 ### Running Tests
@@ -249,6 +275,25 @@ flake8 src/ tests/
 # Auto-format
 black src/ tests/
 ```
+
+---
+
+## 🔐 Environment Variables
+
+**Available variables:**
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `DB_HOST` | `localhost` | PostgreSQL host (use `postgres` for Docker) |
+| `DB_PORT` | `5432` | PostgreSQL port |
+| `DB_NAME` | `anime_db` | Database name |
+| `DB_USER` | `anime_user` | Database user |
+| `DB_PASSWORD` | `anime_password` | Database password |
+| `JIKAN_API_BASE_URL` | `https://api.jikan.moe/v4` | Jikan API endpoint |
+| `ANILIST_API_URL` | `https://graphql.anilist.co` | AniList API endpoint |
+| `DATA_RAW_PATH` | `data/raw` | Path to raw data files |
+
+**Note:** Rate limits are hardcoded in the application (Jikan: 3 req/s, AniList: 90 req/min) as per official API documentation.
 
 ---
 
@@ -370,6 +415,57 @@ TOTAL              95.6%  🎯
 
 ---
 
+## 🔧 Troubleshooting
+
+### Pipeline fails with "Connection refused"
+**Problem:** PostgreSQL not ready
+
+**Solution:**
+```bash
+# Wait for PostgreSQL healthcheck
+docker-compose ps
+# Status should show "healthy"
+
+# Or check logs
+docker-compose logs postgres
+```
+
+### "Rate limit exceeded" errors
+**Problem:** Too many API requests
+
+**Solution:** The pipeline has built-in rate limiting and retries. Just wait - it will resume automatically.
+
+### Tests fail with "database does not exist"
+**Problem:** Test database not created
+
+**Solution:**
+```bash
+# Ensure PostgreSQL is running
+docker-compose up -d postgres
+
+# Tests create/drop their own schema
+uv run pytest tests/unit/test_load.py -v
+```
+
+### Docker build fails with "data/raw not found"
+**Problem:** `.dockerignore` blocking data folder
+
+**Solution:** The Dockerfile copies `data/raw/anime.csv` during build. Ensure the file exists:
+```bash
+ls -la data/raw/anime.csv
+```
+
+### Out of memory during deduplication
+**Problem:** RapidFuzz requires significant RAM for 12k+ records
+
+**Solution:** Reduce dataset size in development:
+```bash
+head -n 1000 data/raw/anime.csv > data/raw/anime_sample.csv
+# Modify pipeline.py to use anime_sample.csv
+```
+
+---
+
 ## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
@@ -387,6 +483,3 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
   - [RapidFuzz](https://github.com/maxbachmann/RapidFuzz) for fuzzy matching
   - [SQLAlchemy](https://www.sqlalchemy.org/) for database operations
 
----
-
-**Made with ❤️ for the anime community**
