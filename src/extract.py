@@ -79,7 +79,7 @@ def should_retry_http_error(exception: BaseException) -> bool:
 @sleep_and_retry  # type: ignore[misc]
 @limits(calls=3, period=1)  # type: ignore[misc]
 @retry(
-    stop=stop_after_attempt(3),
+    stop=stop_after_attempt(5),
     wait=wait_exponential(multiplier=1, min=1, max=10),
     retry=retry_if_exception(should_retry_http_error),
 )
@@ -99,7 +99,7 @@ def fetch_anime_jikan(anime_id: int, base_url: str) -> Optional[Dict[str, Any]]:
         requests.RequestException: On network errors after retries
     """
     try:
-        response = requests.get(f"{base_url}/anime/{anime_id}", timeout=10)
+        response = requests.get(f"{base_url}/anime/{anime_id}", timeout=30)
         response.raise_for_status()
         return cast(Dict[str, Any], response.json()["data"])
     except requests.exceptions.HTTPError as e:
