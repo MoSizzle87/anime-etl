@@ -14,6 +14,16 @@
 
 ---
 
+## 🎥 Demo Video
+
+
+[![Demo Video](https://img.youtube.com/vi/_MzISSsc05I/maxresdefault.jpg)](https://youtu.be/_MzISSsc05I)
+
+*Full walkthrough: Docker deployment, SQL queries, and test results*
+
+---
+
+
 ## 📋 Table of Contents
 
 - [Features](#-features)
