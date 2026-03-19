@@ -66,9 +66,11 @@ def should_retry_http_error(exception: BaseException) -> bool:
         True if should retry, False otherwise
     """
     if isinstance(exception, requests.exceptions.HTTPError):
-        status_code = exception.response.status_code
-        # Retry only if 429 or >= 500
-        return status_code == 429 or status_code >= 500
+        if exception.response is not None:
+            status_code = exception.response.status_code
+            # Retry only if 429 or >= 500
+            return status_code == 429 or status_code >= 500
+        return False
 
     # If not HTTPError, check for Timeout/ConnectionError
     return isinstance(

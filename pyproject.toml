@@ -74,8 +74,10 @@ exclude = [".venv", "__pycache__", "data/"]
 
 [dependency-groups]
 dev = [
+    "mypy>=1.18.2",
     "pytest>=8.4.2",
     "pytest-cov>=6.3.0",
     "pytest-mock>=3.15.1",
     "types-pyyaml>=6.0.12.20250915",
+    "types-requests>=2.32.4.20250611",
 ]
